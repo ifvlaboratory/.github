@@ -1,0 +1,54 @@
+name: Setup packages
+description: wtf
+
+inputs:
+  c:
+    default: true
+  c_gcc_ver:
+    default: 14
+  pkg_list:
+    default: 'build-essential'
+
+runs:
+  using: composite
+  steps:
+  - name: Update packages and delete mandb trigger
+    # HACK: Exclusive speed, usually okay
+    id: apt-init
+    shell: sh
+    run: |
+      sudo rm -f /etc/apt/sources.list.d/*
+      cat <<EOF | sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null
+      Types: deb
+      URIs: mirror+file:/etc/apt/apt-mirrors.txt
+      Suites: noble
+      Components: main universe
+      Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+      EOF
+
+      sudo apt-get -yq update
+      sudo su -c 'echo "set man-db/auto-update false" | debconf-communicate; dpkg-reconfigure man-db'
+      echo PKGS="${{ inputs.pkg_list }}" >> "$GITHUB_ENV"
+
+  - name: Determine packages to install
+    id: judge-pkgs
+    shell: sh
+    run: |
+      if [ ${{ inputs.c == 'true' }} = 'true' ]; then
+        echo PKGS="$PKGS gcc-${{ inputs.c_gcc_ver }} mold" >> "$GITHUB_ENV"
+        echo UPGRADE_GCC=true >> "$GITHUB_ENV"
+      fi
+
+  - name: Install packages
+    id: install
+    shell: sh
+    run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y $PKGS
+
+  - name: Post installation
+    id: post-install
+    shell: sh
+    run: |
+      if [ $UPGRADE_GCC = 'true' ]; then
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ inputs.c_gcc_ver }} 1000
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${{ inputs.c_gcc_ver }} 1000
+      fi

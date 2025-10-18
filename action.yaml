@@ -1,0 +1,35 @@
+name: Setup
+description: wtf
+
+inputs:
+  c:
+    description: 'Use C?'
+  c_env_arch:
+    description: 'CPU architecture'
+  c_env_cpu:
+    description: 'CPU model'
+  go:
+    description: 'Use Go?'
+  pkg_list:
+    description: 'List of APT packages to install'
+
+runs:
+  using: composite
+  steps:
+  # - uses: actions/checkout@v5
+
+  - name: Setup environment variables
+    uses: ifvlaboratory/.github/.github/actions/setup-env@main
+    with:
+      c: ${{ inputs.c }}
+      c_arch: ${{ inputs.c_env_arch }}
+      c_cpu: ${{ inputs.c_env_cpu }}
+      go: ${{ inputs.go }}
+
+  - name: Setup packages
+    uses: ifvlaboratory/.github/.github/actions/setup-pkgs@main
+    with:
+      c: ${{ inputs.c }}
+      pkg_list: ${{ inputs.pkg_list }}
+  #- name: Setup Golang
+    #uses: ./.github/actions/setup-go.yaml

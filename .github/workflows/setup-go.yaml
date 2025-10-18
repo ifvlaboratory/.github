@@ -1,0 +1,13 @@
+name: Setup Golang
+
+on:
+  workflow_call:
+
+jobs:
+  setup-go:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Golang
+      uses: actions/setup-go@v6
+      with:
+        go-version: 'stable'

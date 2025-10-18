@@ -1,0 +1,18 @@
+# TODO: Worth finishing it? Better be an archive
+name: Setup Golang
+description: wtf
+
+runs:
+  using: composite
+  steps:
+  - name: Set GOPATH, MD5 of go.mod environment variable
+    run: |
+      echo GOPATH=$(go env GOPATH) >> "$GITHUB_ENV"
+      echo REV_GOMOD_HASH=$(md5sum $GITHUB_WORKSPACE/go.mod | cut -d ' ' -f 1) >> "$GITHUB_ENV"
+
+  - name: Cache GOPATH
+    uses: actions/cache@v4
+    with:
+      path: ${{ env.GOPATH }}
+      key: ${{ runner.os }}-${{ env.REV_GOMOD_HASH }}
+      restore-keys: ${{ runner.os }}-

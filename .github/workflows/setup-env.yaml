@@ -1,0 +1,72 @@
+name: Setup environment variables
+
+on:
+  workflow_call:
+    inputs:
+      c:
+        type: boolean
+        default: true
+      c_arch:
+        type: string
+        default: x86
+      c_cpu:
+        type: string
+        default: native
+      go:
+        type: boolean
+        default: true
+    outputs:
+      c_cflags:
+        value: ${{ jobs.setup-env.outputs.c_cflags }}
+      c_cxxflags:
+        value: ${{ jobs.setup-env.outputs.c_cxxflags }}
+      c_ldflags:
+        value: ${{ jobs.setup-env.outputs.c_ldflags }}
+      go_goflags:
+        value: ${{ jobs.setup-env.outputs.go_goflags }}
+      go_cflags:
+        value: ${{ jobs.setup-env.outputs.go_cflags }}
+      go_cxxflags:
+        value: ${{ jobs.setup-env.outputs.go_cxxflags }}
+      go_ldflags:
+        value: ${{ jobs.setup-env.outputs.go_ldflags }}
+
+jobs:
+  setup-env:
+    runs-on: ubuntu-latest
+    env:
+      CFLAGS: '-pipe -fno-plt -flto=auto -fno-fat-lto-objects -ffunction-sections -fdata-sections'
+      LDFLAGS: '-Wl,--gc-sections -fuse-ld=mold'
+      GOFLAGS: '-trimpath'
+    outputs:
+      c_cflags: ${{ steps.c_setflags.outputs.c_cflags }}
+      c_cxxflags: ${{ steps.c_setflags.outputs.c_cxxflags }}
+      c_ldflags: ${{ steps.c_setflags.outputs.c_ldflags }}
+      go_goflags: ${{ steps.go_setflags.outputs.go_goflags }}
+      go_cflags: ${{ steps.go_setflags.outputs.go_cflags }}
+      go_cxxflags: ${{ steps.go_setflags.outputs.go_cxxflags }}
+      go_ldflags: ${{ steps.go_setflags.outputs.go_ldflags }}
+    steps:
+    - name: Setup C*FLAGS CGO_*FLAGS environment variables
+      # NOTE: Assume CXXFLAGS equals to CFLAGS
+      id: c_setflags
+      if: ${{ inputs.c == true }}
+      run: |
+        case ${{ inputs.c_arch }} in
+          x86) export CFLAGS="$CFLAGS -Ofast -march=${{ inputs.c_cpu }} -mtune=${{ inputs.c_cpu }}" ;;
+          arm) export CFLAGS="$CFLAGS -O3 -ffast-math -mcpu=${{ inputs.c_cpu }}" ;;
+          *) echo 'Invaild input: c_arch '; exit 1
+        esac
+        echo "c_cflags=$CFLAGS" >> "$GITHUB_OUTPUT"
+        echo "c_cxxflags=$CXXFLAGS $CFLAGS" >> "$GITHUB_OUTPUT"
+        echo "c_ldflags=$LDFLAGS" >> "$GITHUB_OUTPUT"
+
+    - name: Setup GOFLAGS, CGO_*_FLAGS
+      # NOTE: Assume CGO_CXXFLAGS equals to CFLAGS
+      id: go_setflags
+      if: ${{ inputs.go == true }}
+      run: |
+        echo "go_goflags=$GOFLAGS -ldflags=-w -ldflags=-s" >> "$GITHUB_OUTPUT"
+        echo "go_cflags=$CFLAGS" >> "$GITHUB_OUTPUT"
+        echo "go_cxxflags=$CFLAGS" >> "$GITHUB_OUTPUT"
+        echo "go_ldflags=$LDFLAGS" >> "$GITHUB_OUTPUT"

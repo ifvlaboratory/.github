@@ -1,0 +1,49 @@
+name: Setup environment variables
+description: wtf
+
+inputs:
+  c:
+    description: 'Use C?'
+    default: true
+  c_arch:
+    description: 'CPU architecture'
+    default: x86
+  c_cpu:
+    description: 'CPU model'
+    default: native
+  go:
+    description: 'Use Go?'
+    default: true
+
+runs:
+  using: composite
+  steps:
+  - name: Setup C*FLAGS CGO_*FLAGS environment variables
+    if: ${{ inputs.c == 'true' }}
+    id: c_setflags
+    shell: sh
+    env:
+      # NOTE: Assume CXXFLAGS equals to CFLAGS
+      CFLAGS: '-pipe -fno-plt -flto=auto -fno-fat-lto-objects -ffunction-sections -fdata-sections'
+      LDFLAGS: '-Wl,--gc-sections -fuse-ld=mold'
+      GOFLAGS: '-trimpath'
+    run: |
+      case ${{ inputs.c_arch }} in
+        x86) export CFLAGS="$CFLAGS -Ofast -march=${{ inputs.c_cpu }} -mtune=${{ inputs.c_cpu }}" ;;
+        arm) export CFLAGS="$CFLAGS -O3 -ffast-math -mcpu=${{ inputs.c_cpu }}" ;;
+        *) echo 'Invaild input: c_arch '; exit 1
+      esac
+      echo "CFLAGS=$CFLAGS" >> "$GITHUB_ENV"
+      echo "CXXFLAGS=$CXXFLAGS $CFLAGS" >> "$GITHUB_ENV"
+      echo "LDFLAGS=$LDFLAGS" >> "$GITHUB_ENV"
+
+  - name: Setup GOFLAGS, CGO_*_FLAGS
+    if: ${{ inputs.go == 'true' }}
+    id: go_setflags
+    shell: sh
+    # NOTE: Assume CGO_CXXFLAGS equals to CFLAGS
+    run: |
+      echo "GOFLAGS=$GOFLAGS -ldflags=-w -ldflags=-s -trimpath" >> "$GITHUB_ENV"
+      echo "CGO_CFLAGS=$CFLAGS" >> "$GITHUB_ENV"
+      echo "CGO_CXXFLAGS=$CFLAGS" >> "$GITHUB_ENV"
+      echo "CGO_LDFLAGS=$LDFLAGS" >> "$GITHUB_ENV"
