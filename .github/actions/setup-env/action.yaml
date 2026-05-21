@@ -18,6 +18,12 @@ inputs:
 runs:
   using: composite
   steps:
+
+    - name: Handle inputs if it's null
+      run: |
+        c_cpu=${{ github.event.inputs.c_env_cpu }}
+        echo "c_cpu=${c_cpu:-"x86-64"}" >> $GITHUB_ENV
+
   - name: Setup C*FLAGS CGO_*FLAGS environment variables
     if: ${{ inputs.c == 'true' }}
     id: c_setflags
